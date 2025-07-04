@@ -12,10 +12,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Wallet } from "lucide-react"
+import { useXumm } from "@/hooks/useXumm"
 
 export default function HomePage() {
   const router = useRouter()
   const { address, isConnected, isPending, connectors, connect, disconnect } = useWallet()
+  const { account: xrplAccount, login: xrplLogin, logout: xrplLogout, loading: xrplLoading } = useXumm()
 
   const handleConnectWallet = async (connectorId: string) => {
     await connect(connectorId)
@@ -74,6 +76,16 @@ export default function HomePage() {
                   {connector.name}
                 </DropdownMenuItem>
               ))}
+              <DropdownMenuItem
+                key="xaman"
+                onClick={async () => {
+                  await xrplLogin();
+                  router.push("/survey");
+                }}
+              >
+                <img src="https://xaman.app/favicon.ico" alt="Xaman" style={{ width: 20, height: 20, marginRight: 8 }} />
+                Xaman (XRPL)
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )}
@@ -173,6 +185,16 @@ export default function HomePage() {
                     {connector.name}
                   </DropdownMenuItem>
                 ))}
+                <DropdownMenuItem
+                  key="xaman"
+                  onClick={async () => {
+                    await xrplLogin();
+                    router.push("/survey");
+                  }}
+                >
+                  <img src="https://xaman.app/favicon.ico" alt="Xaman" style={{ width: 20, height: 20, marginRight: 8 }} />
+                  Xaman (XRPL)
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )}

@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { useWallet } from "@/hooks/useWallet"
+import { useXumm } from "@/hooks/useXumm"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +26,7 @@ import { Wallet, RefreshCw, AlertTriangle } from "lucide-react"
 export default function SettingsPage() {
   const router = useRouter()
   const { address, isConnected } = useWallet()
+  const { account: xrplAccount } = useXumm()
   const [riskPreference, setRiskPreference] = useState<string>("")
 
   useEffect(() => {
@@ -50,6 +52,10 @@ export default function SettingsPage() {
     alert("Strategy has been reset successfully!")
   }
 
+  // 연결 상태 및 주소 결정 (EVM 우선, 없으면 XRPL)
+  const connectedAddress = isConnected ? address : xrplAccount
+  const anyConnected = isConnected || !!xrplAccount
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <NavigationBar />
@@ -72,7 +78,7 @@ export default function SettingsPage() {
                   <Label className="text-sm text-muted-foreground">Connected Address</Label>
                   <div className="flex items-center mt-1">
                     <div className="bg-muted p-2 rounded-md text-sm font-mono break-all">
-                      {isConnected ? address : "No wallet connected"}
+                      {anyConnected ? connectedAddress : "No wallet connected"}
                     </div>
                   </div>
                 </div>
@@ -80,8 +86,8 @@ export default function SettingsPage() {
                 <div>
                   <Label className="text-sm text-muted-foreground">Connection Status</Label>
                   <div className="flex items-center mt-1">
-                    <div className={`h-2 w-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'} mr-2`}></div>
-                    <span className="text-sm">{isConnected ? "Connected" : "Disconnected"}</span>
+                    <div className={`h-2 w-2 rounded-full ${anyConnected ? 'bg-green-500' : 'bg-red-500'} mr-2`}></div>
+                    <span className="text-sm">{anyConnected ? "Connected" : "Disconnected"}</span>
                   </div>
                 </div>
               </div>
