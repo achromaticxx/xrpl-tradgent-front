@@ -23,14 +23,78 @@ export default function HomePage() {
 
   const handleConnectWallet = async (connectorId: string) => {
     await connect(connectorId)
-    // Check if survey is completed
-    const surveyCompleted = localStorage.getItem("surveyCompleted")
-    if (surveyCompleted) {
-      router.push("/dashboard")
-    } else {
-      router.push("/survey")
+    console.log("handleConnectWallet - address after connect:", address);
+    if (address) { // EVM 지갑 연결 시
+      const isRegistered = await checkAndRegisterUser(address, 'evm');
+      if (isRegistered) {
+        router.push("/dashboard");
+      } else {
+        router.push("/survey");
+      }
     }
   }
+
+  const checkAndRegisterUser = async (walletAddress: string, type: 'evm' | 'xrpl') => {
+    console.log(`checkAndRegisterUser called with: ${walletAddress}, type: ${type}`);
+    let queryParam = '';
+    if (type === 'evm') {
+      queryParam = `evm_wallet_address=${walletAddress}`;
+    } else if (type === 'xrpl') {
+      queryParam = `xrpl_wallet_address=${walletAddress}`;
+    }
+
+    try {
+      // 1. Check if user exists
+      const checkResponse = await fetch(`/api/user/profile?${queryParam}`);
+      if (checkResponse.ok) {
+        console.log("User already registered. Redirecting to dashboard.");
+        return true; // User exists
+      } else if (checkResponse.status === 404) {
+        console.log("User not found. Proceeding with registration.");
+        // 2. If user does not exist, register them
+        let bodyData: any = {
+          risk_profile: "", // 초기값
+          experience: [], // 초기값
+          delegated: false, // 초기값
+          delegated_at: null, // 초기값
+        };
+
+        if (type === 'evm') {
+          bodyData.evm_wallet_address = walletAddress;
+        } else if (type === 'xrpl') {
+          bodyData.xrpl_wallet_address = walletAddress;
+        }
+
+        const registerResponse = await fetch("/api/user/register", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(bodyData),
+        });
+
+        if (!registerResponse.ok) {
+          const errorData = await registerResponse.json();
+          console.error("Failed to register user:", errorData.detail);
+          alert(`Failed to register user: ${errorData.detail}`);
+          return false;
+        } else {
+          console.log("User registered successfully!");
+          return false; // User was just registered, redirect to survey
+        }
+      } else {
+        // Handle other potential errors from profile check
+        const errorData = await checkResponse.json();
+        console.error("Error checking user profile:", errorData.detail);
+        alert(`Error checking user profile: ${errorData.detail}`);
+        return false;
+      }
+    } catch (error) {
+      console.error("Error in checkAndRegisterUser:", error);
+      alert("Error processing user registration.");
+      return false;
+    }
+  };
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -241,9 +305,17 @@ export default function HomePage() {
                 <DropdownMenuItem
                   key="xaman"
                   onClick={async () => {
-                    await xrplLogin();
-                    router.push("/survey");
-                  }}
+                  const result = await xrplLogin();
+                  console.log("Xaman login result:", result);
+                  if (result && result.me && result.me.sub) { // XUMM 연결 성공 시
+                    const isRegistered = await checkAndRegisterUser(result.me.sub, 'xrpl');
+                    if (isRegistered) {
+                      router.push("/dashboard");
+                    } else {
+                      router.push("/survey");
+                    }
+                  }
+                }}
                 >
                   <img src="https://xaman.app/favicon.ico" alt="Xaman" style={{ width: 20, height: 20, marginRight: 8 }} />
                   Xaman (XRPL)
@@ -251,9 +323,17 @@ export default function HomePage() {
                 <DropdownMenuItem
                   key="crossmark"
                   onClick={async () => {
-                    await crossmarkConnect();
-                    router.push("/survey");
-                  }}
+                  const result = await crossmarkConnect();
+                  console.log("Crossmark connect result:", result);
+                  if (result) { // Crossmark 연결 성공 시
+                    const isRegistered = await checkAndRegisterUser(result, 'xrpl');
+                    if (isRegistered) {
+                      router.push("/dashboard");
+                    } else {
+                      router.push("/survey");
+                    }
+                  }
+                }}
                 >
                   <img src="https://crossmark.io/favicon.ico" alt="Crossmark" style={{ width: 20, height: 20, marginRight: 8 }} />
                   Crossmark (XRPL)
