@@ -8,11 +8,16 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Progress } from "@/components/ui/progress"
+import { useXumm } from "@/hooks/useXumm"
+import { useCrossmark } from "@/hooks/useCrossmark"
 
 export default function SurveyPage() {
   const router = useRouter()
   const [step, setStep] = useState(1)
   const totalSteps = 3
+  const { account: xummAccount } = useXumm()
+  const { account: crossmarkAccount } = useCrossmark()
+  const xrpl_wallet_address = xummAccount || crossmarkAccount
 
   const [ceFiExperience, setCeFiExperience] = useState<string[]>([])
   const [deFiExperience, setDeFiExperience] = useState<string[]>([])
@@ -38,12 +43,33 @@ export default function SurveyPage() {
     }
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // Save survey data
-    localStorage.setItem("surveyCompleted", "true")
-    localStorage.setItem("ceFiExperience", JSON.stringify(ceFiExperience))
-    localStorage.setItem("deFiExperience", JSON.stringify(deFiExperience))
-    localStorage.setItem("riskPreference", riskPreference)
+    try {
+      const response = await fetch("http://localhost:8000/survey", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ceFiExperience,
+          deFiExperience,
+          riskPreference,
+          xrpl_wallet_address,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const result = await response.json()
+      console.log("Survey submitted successfully:", result)
+      localStorage.setItem("surveyCompleted", "true")
+    } catch (error) {
+      console.error("Error submitting survey:", error)
+      // Optionally, show an error message to the user
+    }
 
     // Navigate to dashboard
     router.push("/dashboard")

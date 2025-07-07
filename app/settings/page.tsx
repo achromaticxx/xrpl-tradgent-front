@@ -29,30 +29,6 @@ export default function SettingsPage() {
   const { address, isConnected } = useWallet()
   const { account: xrplAccount } = useXumm()
   const { account: crossmarkAccount, disconnect: crossmarkDisconnect } = useCrossmark();
-  const [riskPreference, setRiskPreference] = useState<string>("")
-
-  useEffect(() => {
-    // Load risk preference from localStorage
-    const storedRiskPreference = localStorage.getItem("riskPreference")
-    if (storedRiskPreference) {
-      setRiskPreference(storedRiskPreference)
-    }
-  }, [])
-
-  const handleRiskChange = (value: string) => {
-    setRiskPreference(value)
-    localStorage.setItem("riskPreference", value)
-  }
-
-  const handleRetakeSurvey = () => {
-    router.push("/survey")
-  }
-
-  const handleResetStrategy = () => {
-    // In a real app, this would reset the AI strategy
-    // For this demo, we'll just show a success message
-    alert("Strategy has been reset successfully!")
-  }
 
   // 연결 상태 및 주소 결정 (EVM > Crossmark > XRPL), 빈 문자열 방지
   const connectedAddress =
@@ -65,7 +41,69 @@ export default function SettingsPage() {
       : null;
   const anyConnected = !!connectedAddress;
 
-  return (
+  const [riskPreference, setRiskPreference] = useState<string>("")
+  const [experience, setExperience] = useState<string[]>([])
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!connectedAddress) return;
+
+      try {
+        const response = await fetch(`http://localhost:8000/user/api/user/profile?xrpl_wallet_address=${connectedAddress}`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        if (data.success && data.data) {
+          setRiskPreference(data.data.risk_profile || "");
+          setExperience(data.data.experience || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch user profile:", error);
+      }
+    };
+
+    fetchUserProfile();
+  }, [connectedAddress]);
+
+  const handleRiskChange = async (value: string) => {
+    setRiskPreference(value)
+    if (!connectedAddress) return;
+
+    try {
+      const response = await fetch("http://localhost:8000/user/api/user/set_risk_profile", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          xrpl_wallet_address: connectedAddress,
+          risk_profile: value,
+          experience: experience, // 기존 experience 값을 함께 보냅니다.
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      console.log("Risk preference updated successfully in backend.");
+    } catch (error) {
+      console.error("Failed to update risk preference in backend:", error);
+    }
+  }
+
+  const handleRetakeSurvey = () => {
+    router.push("/survey")
+  }
+
+  const handleResetStrategy = () => {
+    // In a real app, this would reset the AI strategy
+    // For this demo, we'll just show a success message
+    alert("Strategy has been reset successfully!")
+  }
+
+  
+    return (
     <div className="min-h-screen flex flex-col bg-background">
       <NavigationBar />
       <main className="flex-1 container mx-auto px-4 py-6">
