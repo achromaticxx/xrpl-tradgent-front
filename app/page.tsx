@@ -13,11 +13,13 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Wallet } from "lucide-react"
 import { useXumm } from "@/hooks/useXumm"
+import { useCrossmark } from "@/hooks/useCrossmark"
 
 export default function HomePage() {
   const router = useRouter()
   const { address, isConnected, isPending, connectors, connect, disconnect } = useWallet()
   const { account: xrplAccount, login: xrplLogin, logout: xrplLogout, loading: xrplLoading } = useXumm()
+  const { account: crossmarkAccount, connect: crossmarkConnect, disconnect: crossmarkDisconnect, loading: crossmarkLoading } = useCrossmark();
 
   const handleConnectWallet = async (connectorId: string) => {
     await connect(connectorId)
@@ -43,6 +45,7 @@ export default function HomePage() {
           />
           <h1 className="text-xl font-bold">XRP AI Trading</h1>
         </div>
+        {/* EVM, XRPL, Crossmark 연결 상태별 분기 */}
         {isConnected ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -57,14 +60,42 @@ export default function HomePage() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+        ) : crossmarkAccount ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="flex items-center gap-2">
+                <img src="https://crossmark.io/favicon.ico" alt="Crossmark" style={{ width: 20, height: 20 }} />
+                {crossmarkAccount.slice(0, 6)}...{crossmarkAccount.slice(-4)}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => crossmarkDisconnect()}>
+                Disconnect Crossmark
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : xrplAccount ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="flex items-center gap-2">
+                <img src="https://xaman.app/favicon.ico" alt="Xaman" style={{ width: 20, height: 20 }} />
+                {xrplAccount.slice(0, 6)}...{xrplAccount.slice(-4)}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => xrplLogout()}>
+                Disconnect Xaman
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         ) : (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                disabled={isPending}
+                disabled={isPending || crossmarkLoading || xrplLoading}
                 className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
               >
-                {isPending ? "Connecting..." : "Connect Wallet"}
+                {isPending || crossmarkLoading || xrplLoading ? "Connecting..." : "Connect Wallet"}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
@@ -79,12 +110,34 @@ export default function HomePage() {
               <DropdownMenuItem
                 key="xaman"
                 onClick={async () => {
-                  await xrplLogin();
-                  router.push("/survey");
+                  const result = await xrplLogin();
+                  // XRPL 계정이 실제로 연결된 경우에만 이동
+                  setTimeout(() => {
+                    if (typeof window !== "undefined") {
+                      const xrplAccount = window.localStorage.getItem("xrplAccount");
+                      if (xrplAccount) router.push("/survey");
+                    }
+                  }, 500);
                 }}
               >
                 <img src="https://xaman.app/favicon.ico" alt="Xaman" style={{ width: 20, height: 20, marginRight: 8 }} />
                 Xaman (XRPL)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                key="crossmark"
+                onClick={async () => {
+                  await crossmarkConnect();
+                  // Crossmark 계정이 실제로 연결된 경우에만 이동
+                  setTimeout(() => {
+                    if (typeof window !== "undefined") {
+                      const crossmarkAccount = window.localStorage.getItem("crossmarkAccount");
+                      if (crossmarkAccount) router.push("/survey");
+                    }
+                  }, 500);
+                }}
+              >
+                <img src="https://crossmark.io/favicon.ico" alt="Crossmark" style={{ width: 20, height: 20, marginRight: 8 }} />
+                Crossmark (XRPL)
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -194,6 +247,16 @@ export default function HomePage() {
                 >
                   <img src="https://xaman.app/favicon.ico" alt="Xaman" style={{ width: 20, height: 20, marginRight: 8 }} />
                   Xaman (XRPL)
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  key="crossmark"
+                  onClick={async () => {
+                    await crossmarkConnect();
+                    router.push("/survey");
+                  }}
+                >
+                  <img src="https://crossmark.io/favicon.ico" alt="Crossmark" style={{ width: 20, height: 20, marginRight: 8 }} />
+                  Crossmark (XRPL)
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

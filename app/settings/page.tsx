@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { useWallet } from "@/hooks/useWallet"
 import { useXumm } from "@/hooks/useXumm"
+import { useCrossmark } from "@/hooks/useCrossmark"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,6 +28,7 @@ export default function SettingsPage() {
   const router = useRouter()
   const { address, isConnected } = useWallet()
   const { account: xrplAccount } = useXumm()
+  const { account: crossmarkAccount, disconnect: crossmarkDisconnect } = useCrossmark();
   const [riskPreference, setRiskPreference] = useState<string>("")
 
   useEffect(() => {
@@ -52,22 +54,34 @@ export default function SettingsPage() {
     alert("Strategy has been reset successfully!")
   }
 
-  // 연결 상태 및 주소 결정 (EVM 우선, 없으면 XRPL)
-  const connectedAddress = isConnected ? address : xrplAccount
-  const anyConnected = isConnected || !!xrplAccount
+  // 연결 상태 및 주소 결정 (EVM > Crossmark > XRPL), 빈 문자열 방지
+  const connectedAddress =
+    isConnected && address && address.length > 0
+      ? address
+      : crossmarkAccount && crossmarkAccount.length > 0
+      ? crossmarkAccount
+      : xrplAccount && xrplAccount.length > 0
+      ? xrplAccount
+      : null;
+  const anyConnected = !!connectedAddress;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <NavigationBar />
-
       <main className="flex-1 container mx-auto px-4 py-6">
         <h1 className="text-3xl font-bold mb-6">Settings</h1>
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
-                <Wallet className="mr-2 h-5 w-5" />
+                {/* 연결된 지갑 종류별 아이콘 및 주소 */}
+                {isConnected && <Wallet className="mr-2 h-5 w-5" />}
+                {crossmarkAccount && (
+                  <img src="https://crossmark.io/favicon.ico" alt="Crossmark" style={{ width: 20, height: 20, marginRight: 8 }} />
+                )}
+                {xrplAccount && !isConnected && !crossmarkAccount && (
+                  <img src="https://xaman.app/favicon.ico" alt="Xaman" style={{ width: 20, height: 20, marginRight: 8 }} />
+                )}
                 Wallet Information
               </CardTitle>
               <CardDescription>Your connected wallet details</CardDescription>
@@ -80,9 +94,14 @@ export default function SettingsPage() {
                     <div className="bg-muted p-2 rounded-md text-sm font-mono break-all">
                       {anyConnected ? connectedAddress : "No wallet connected"}
                     </div>
+                    {/* Crossmark 해제 버튼 */}
+                    {crossmarkAccount && (
+                      <Button size="sm" variant="outline" className="ml-2" onClick={crossmarkDisconnect}>
+                        Disconnect Crossmark
+                      </Button>
+                    )}
                   </div>
                 </div>
-
                 <div>
                   <Label className="text-sm text-muted-foreground">Connection Status</Label>
                   <div className="flex items-center mt-1">
